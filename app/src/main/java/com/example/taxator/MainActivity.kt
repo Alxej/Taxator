@@ -1,47 +1,80 @@
 package com.example.taxator
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.taxator.ui.theme.TaxatorTheme
+import android.widget.Toast
+import com.example.taxator.ar.ArCompatibilityManager
+import com.example.taxator.ar.SceneFormHelper
+import com.example.taxator.permissions.PermissionUtils
+import com.google.ar.sceneform.ux.ArFragment
+import androidx.appcompat.app.AppCompatActivity
+import com.example.taxator.ar.ArHelper
+import com.google.ar.core.CameraConfig
+import com.google.ar.core.Config
+import com.google.ar.core.Session
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+    private lateinit var arFragment: ArFragment
+    private var arSession: Session? = null
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            TaxatorTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+        setContentView(R.layout.activity_main)
+
+
+        if (!allInstrumentsAreAvailable()) {
+            finish()
+        }
+        else{
+            startArSession()
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    fun allInstrumentsAreAvailable() : Boolean{
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TaxatorTheme {
-        Greeting("Android")
+        if (!ArCompatibilityManager.checkArCoreCompatibility(this)){
+            return false
+        }
+
+        if (!SceneFormHelper.isSupportedDevice(this)) {
+            return false
+        }
+
+        if (!PermissionUtils.checkCameraPermission(this)){
+            PermissionUtils.requestCameraPermission(this)
+        }
+
+        return true
+    }
+
+    fun startArSession(){
+        arFragment = supportFragmentManager.findFragmentById(R.id.arFragment) as ArFragment
+
+        var session = Session(this)
+
+        arSession = ArHelper.configureSession(
+            session = session,
+            focusMode = Config.FocusMode.AUTO,
+            fpsMode = CameraConfig.TargetFps.TARGET_FPS_30
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        PermissionUtils.onRequestPermissionsResult(requestCode, grantResults,
+            onPermissionGranted = {
+                // Разрешение предоставлено, можно начинать работу с ARCore.
+                startArSession()
+            },
+            onPermissionDenied = {
+                // Разрешение отклонено, показываем сообщение пользователю.
+                Toast.makeText(this, "Permission is required", Toast.LENGTH_LONG).show()
+                finish() // Желательно закрыть приложение, если камера необходима.
+            }
+        )
     }
 }
