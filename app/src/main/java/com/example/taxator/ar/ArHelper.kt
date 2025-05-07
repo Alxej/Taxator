@@ -10,7 +10,8 @@ object ArHelper {
 
     fun configureSession(session: Session,
                          focusMode: Config.FocusMode? = null,
-                         fpsMode: CameraConfig.TargetFps? = null): Session{
+                         fpsMode: CameraConfig.TargetFps? = null,
+                         updateMode: Config.UpdateMode? = null): Session{
         var newSession = session
 
         if (focusMode != null){
@@ -27,8 +28,26 @@ object ArHelper {
             )
         }
 
+        if(updateMode != null){
+            newSession = applyUpdateMode(
+                newSession,
+                updateMode
+            )
+        }
+
         return newSession
 
+    }
+
+    fun applyUpdateMode(session: Session,
+                        updMode: Config.UpdateMode) : Session{
+        val config = Config(session).apply {
+            updateMode = updMode
+        }
+
+        session.configure(config)
+
+        return session
     }
 
     fun applyFocusModeSettings(session: Session,
